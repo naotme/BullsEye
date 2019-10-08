@@ -20,7 +20,11 @@ struct ContentView: View {
     @State var score = 0
     @State var round = 1
     var sliderValueRounded: Int {
-        Int(self.sliderValue.rounded())
+        Int(sliderValue.rounded())
+    }
+    
+    var sliderTargetDifference: Int {
+        abs(sliderValueRounded - target)
     }
     
     // User interface content and layout
@@ -31,7 +35,7 @@ struct ContentView: View {
             // Target row
             HStack {
                 Text("Put the bullseye as close as you can to:")
-                Text("\(self.target)")
+                Text("\(target)")
             }
             
             Spacer()
@@ -39,7 +43,7 @@ struct ContentView: View {
             // Slider row
             HStack {
                 Text("1")
-                Slider(value: self.$sliderValue, in: 1...100)
+                Slider(value: $sliderValue, in: 1...100)
                 Text("100")
             }
             
@@ -48,17 +52,14 @@ struct ContentView: View {
             // Button row
             Button(action: {
                 self.alertIsVisible = true
-                print("Points awarded: \(self.pointsForCurrentRound())")
             }) {
                 Text("Hit me!")
             }
-            .alert(isPresented: self.$alertIsVisible) {
-                Alert(title: Text("Hello there!"),
-                      message: Text(self.scoringMessage()),
+            .alert(isPresented: $alertIsVisible) {
+                Alert(title: Text(alertTitle()),
+                      message: Text(scoringMessage()),
                       dismissButton: .default(Text("Awesome")) {
-                        self.score = self.score + self.pointsForCurrentRound()
-                        self.target = Int.random(in: 1...100)
-                        self.round = self.round + 1
+                        self.startNewRound()
                     })
             }
             
@@ -66,15 +67,17 @@ struct ContentView: View {
             
             // Score row
             HStack {
-                Button(action: {}) {
+                Button(action: {
+                    self.startNewGame()
+                }) {
                     Text("Start over")
                 }
                 Spacer()
                 Text("Score:")
-                Text("\(self.score)")
+                Text("\(score)")
                 Spacer()
                 Text("Round:")
-                Text("\(self.round)")
+                Text("\(round)")
                 Spacer()
                 Button(action: {}) {
                     Text("Info")
@@ -82,18 +85,61 @@ struct ContentView: View {
             }
             .padding(.bottom, 20)
         }
+        .onAppear() {
+            self.startNewGame()
+        }
     }
     
     // Methods
     // =======
     func pointsForCurrentRound() -> Int {
         let maximumScore = 100
-        let difference = abs(self.sliderValueRounded - self.target)
-        return maximumScore - difference
+        let points: Int
+        
+        if sliderTargetDifference == 0 {
+            points = 200
+        } else if sliderTargetDifference == 1 {
+            points = 150
+        } else {
+            points = maximumScore - sliderTargetDifference
+        }
+        
+        return points
     }
     
     func scoringMessage() -> String {
-        return "The slider's value is \(self.sliderValueRounded).\n" + "The target value is \(self.target).\n" + "You scored \(self.pointsForCurrentRound()) points this round."
+        return "The slider's value is \(sliderValueRounded).\n" + "The target value is \(target).\n" + "You scored \(pointsForCurrentRound()) points this round."
+    }
+    
+    func alertTitle() -> String {
+        let title: String
+        if sliderTargetDifference == 0 {
+            title = "Perfect!"
+        } else if sliderTargetDifference < 5 {
+            title = "You almost had it!"
+        } else if sliderTargetDifference < 10 {
+            title = "Not bad!"
+        } else {
+            title = "Are you even trying?"
+        }
+        return title
+    }
+    
+    func startNewGame() {
+        score = 0
+        round = 1
+        resetSliderAndTarget()
+    }
+    
+    func startNewRound() {
+        score = score + pointsForCurrentRound()
+        round = round + 1
+        resetSliderAndTarget()
+    }
+    
+    func resetSliderAndTarget() {
+        sliderValue = Double.random(in: 1...100)
+        target = Int.random(in: 1...100)
     }
 }
 
